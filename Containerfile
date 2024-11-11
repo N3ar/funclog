@@ -78,7 +78,7 @@ RUN make && make install
 RUN ldconfig
 
 WORKDIR /home/user
-RUN mkdir -p /home/user/funclog && git clone https://github.com/N3ar/funclog.git /home/user/funclog
+RUN mkdir -p /home/user/funclog && git clone git@github.com:N3ar/funclog.git /home/user/funclog
 RUN chown user:user /home/user/funclog
 RUN ./build.sh -i
 RUN ldconfig
