@@ -8,6 +8,7 @@ This is useful during analysis
 - [About the Project](#about-the-project)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
+- [TODO](#todo)
 
 ## About the Project
 
@@ -40,7 +41,7 @@ All pre-requisites for the project are included in the Containerfile and can be 
 1. Clone the repo
     ```sh
     # USE THE SSH CLONE CUZ PRIVATE
-    git clone https://github.com/N3ar/funclog.git
+    git clone git@github.com:N3ar/funclog.git
     ```
    
 2. Build the pass
@@ -70,3 +71,9 @@ clang -llogger instrumented-hello.ll -o hello -v
 ```
 
 If you built with -i or you have placed the shared object on PATH, you may leave out the prefix.
+
+
+## TODO
+- DOxygen Documentation
+- Proper Test Cases
+- CI/CD
