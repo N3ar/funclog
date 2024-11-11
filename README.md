@@ -8,6 +8,7 @@ This is useful during analysis
 - [About the Project](#about-the-project)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
+- [TODO](#todo)
 
 ## About the Project
 
@@ -70,3 +71,9 @@ clang -llogger instrumented-hello.ll -o hello -v
 ```
 
 If you built with -i or you have placed the shared object on PATH, you may leave out the prefix.
+
+
+## TODO
+- DOxygen Documentation
+- Proper Test Cases
+- CI/CD
