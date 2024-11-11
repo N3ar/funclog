@@ -41,7 +41,7 @@ All pre-requisites for the project are included in the Containerfile and can be 
 1. Clone the repo
     ```sh
     # USE THE SSH CLONE CUZ PRIVATE
-    git clone https://github.com/N3ar/funclog.git
+    git clone git@github.com:N3ar/funclog.git
     ```
    
 2. Build the pass
