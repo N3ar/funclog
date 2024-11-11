@@ -77,9 +77,32 @@ WORKDIR build
 RUN make && make install
 RUN ldconfig
 
+# Copy Private Key onboarded to GITHUB
 WORKDIR /home/user
-RUN mkdir -p /home/user/funclog && git clone git@github.com:N3ar/funclog.git /home/user/funclog
-RUN chown user:user /home/user/funclog
+COPY id_rsa .ssh/id_rsa_github
+RUN chmod 400 .ssh/id_rsa_github
+
+# Create ssh_config file for user to clone from private repo
+RUN echo "Host github.com" >> .ssh/config && \
+    echo "  HostName github.com" >> .ssh/config && \
+    echo "  IdentityFile ~/.ssh/id_rsa_github" >> .ssh/config && \
+    echo "  IdentitiesOnly yes" >> .ssh/config && \
+    echo "  AddKeysToAgent yes" >> .ssh/config 
+RUN chmod 600 .ssh/config
+RUN chown -R user:user .ssh
+
+# Use gitconfig to specify user account to enable private repo auth
+COPY gitconfig .gitconfig
+RUN chown user:user .gitconfig
+
+# Install FuncLog from git as user with ssh configurations
+USER user
+RUN git clone git@github.com:N3ar/funclog.git
+RUN chown -R user:user funclog
+
+# Build and copy into path
+WORKDIR funclog
+USER root
 RUN ./build.sh -i
 RUN ldconfig
 
