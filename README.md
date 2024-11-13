@@ -95,6 +95,27 @@ clang -llogger instrumented-hello.ll -o hello -v
 ```
 
 ## TODO
+- Indirect Call Enrichment
+- Function Argument Enrichment
+- Bitcast Call Stripping
+- Line numbers
 - DOxygen Documentation
 - Proper Test Cases
 - CI/CD
+
+### Indirect Call Enrichment
+Currently, the pass provides function assignment logging and directs the analyst to what `%##` temporary value is being used. An analyst can explore the LLVM-IR to get more detailed information.
+
+There are several improvement steps possible:
+1. Step backwards (as possible) through referred instructions and provide earliest possible certain reference
+2. Perform (1) but examine all dominators and generate sets of possible functions indirectly called at each individual location
+3. Assess Logfile to resolve possible functions from (2)
+
+### Function Argument Enrichment
+Rather than tracing all variables, if we are focused on function interactions we should only care about resolving function arguments. Solving for these values would help analysts better understand the contexts for each function execution currently being tracked by this pass.
+
+### Bitcast Stripping
+Currently the pass doesn't handle bitcast functions. This is a lighter lift, but worth tracking.
+
+### Line Numbers
+The logging library adds line numbwrs natively, but instrumenting during a pass makes resolving this impossible. The linenumber fetching is done though pre-processor macros that may not be reprlecated without execution. This needs to be explored.
