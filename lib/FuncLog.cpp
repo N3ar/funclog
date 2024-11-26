@@ -31,7 +31,7 @@
 using namespace llvm;
 using namespace funclog;
 
-#define DEBUG 0
+#define DEBUG 1
 
 GlobalVariable* logFileName;
 GlobalVariable* line;                 // TODO Always zero; preproc constraint
@@ -350,6 +350,53 @@ void logFuncCall(Function &F) {
     return;
 }
 
+// TODO LIST
+// - Update the hello for more basicblocks
+// - Figure out how to get and manage BB names (BBNAME almost always empty)
+// - Switch Log Messages to header file
+void logBBEntry(Function &F) {
+    Module *M = F.getParent();
+    FunctionCallee loggerLog = logger::loggerLog(*M);
+
+    std::string logMsg;
+
+    IRBuilder bldr(F.getContext());
+    for (auto &BB : F) {
+        // Dodge setup logger
+        std::string bbName = BB.getName().str();
+        if (bbName == "setupLogger")
+            continue;
+
+        logMsg = "BasicBlock Entry: " + bbName;
+
+#if DEBUG
+        errs() << "\tIn BBName: " << bbName << "\n";
+        errs() << "\tpre-mod\n";
+        dumpBB(&BB);
+#endif
+
+        // Set insert point at top of the BB
+        IRBuilder bldr(&BB);
+
+        //  Get top instruction of BB
+        Instruction* firstI = BB.getFirstNonPHI();
+        bldr.SetInsertPoint(firstI);
+        
+        // Insert Entry Logging Instruction
+        Constant* bbEntry = bldr.CreateGlobalStringPtr(logMsg, "BBEntry", 0, F.getParent());
+        bldr.CreateCall(loggerLog, {bldr.getInt32(LogLevel_INFO), logFileName, bldr.getInt32(0), bbEntry}, "");
+
+#if DEBUG
+        errs() << "\tpost-mod\n";
+        dumpBB(&BB);
+#endif
+    }
+}
+
+// NOTE Currently I have logBBEntry as a funciton outside of the function that
+// traverses all basicblocks.
+// This means that I am running the same loop again.
+// It is inefficient but clear.
 bool instrumentAllFuncs(Module &M) {
     // Loop through functions
     for (auto &F : M) {
@@ -357,7 +404,9 @@ bool instrumentAllFuncs(Module &M) {
         if(F.isDeclaration())
             continue;
     
+        // TODO Might be able to do BB looping outside of FuncCall and BBEntry
         logFuncCall(F);
+        logBBEntry(F);
         logFuncEntry(F);
         logFuncRet(F);
     }
@@ -383,6 +432,7 @@ bool FuncLog::runOnModule(Module &M) {
         }
     }
 
+    // TODO Check to see if logSetup needs to be run or not
     if (!logSetup(M)) {
         errs() << "Failed to set up logging library instrumentation\n";
         exit(1);
