@@ -14,6 +14,16 @@
 //      opt -load-pass-plugin=libGneiss.so -passes="gneiss"
 //          <input_llvm_bc> -o <updated_llvm_bc>
 //
+// NOTES:
+//  Currently I have logBBEntry as a funciton outside of the function that
+//  traverses all basicblocks. This means that I am running the same loop again
+//  It is inefficient but clear.
+// 
+// TODO
+//  - Details in documentation
+//  - logFuncRet - Check for no-return functions
+//  - Consider logBBEntry inside of logFuncCall to minimize looping
+//  - Switch to header defined log strings
 //=============================================================================
 #include "FuncLog.h"
 #include "ir_stdio.h"
@@ -27,6 +37,8 @@
 #include <logger.h>                   // LogLevel_INFO
 
 #include <regex>
+#include <iomanip>
+#include <iostream>
 
 using namespace llvm;
 using namespace funclog;
@@ -40,6 +52,19 @@ GlobalVariable* line;                 // TODO Always zero; preproc constraint
 // Some of Jay's LLVM support functions
 //------------------------------------------------------------------------------
 #if DEBUG
+/**
+ * @brief Dumps via errs() the name and instructions of a basicblock.
+ *
+ * This function prints a summary of a basicblock in its current state while
+ * running an llvm pass.
+ *
+ * @param BB The basicblock being printed.
+ * 
+ * @example FuncLog.cpp
+ *
+ * @usage
+ * dumpBB(someBB); // someBB must be a BasicBlock*
+ */
 void dumpBB(BasicBlock* BB) {
     errs() << "Block: " << BB->getName() << "\n";
     for (auto &I : *BB) {
@@ -48,6 +73,26 @@ void dumpBB(BasicBlock* BB) {
 }
 #endif
 
+/**
+ * @brief Gets the name of a function referred in a call instruction.
+ *
+ * This function gets the name of a function being called in a CallInst as a
+ * StringRef during an LLVM Compiler pass.
+ *
+ * @param call The CallInstruction (or correctly dynamically cast Instruction)
+ * to fetch the call targets name from.
+ *
+ * @return The name of the function as a StringRef
+ *
+ * @details
+ * The name of the function is usually a string. In the event that this is an
+ * indirect call, the words "indirect call" are returned instead.
+ * 
+ * @usage
+ * StringRef strRef = get_func_name(callInst);
+ * std::string str = get_func_name(callInst).str();
+ * StringRef funcName = get_func_name(dyn_cast<CallInst>(call));
+ */
 StringRef get_func_name(CallInst* call) {
     Function* f = call->getCalledFunction();
     if (f)
@@ -112,6 +157,27 @@ GlobalVariable* createGlobalInt(Module &M, Type* Ty, const char *c) {
 //------------------------------------------------------------------------------
 // FuncLog Pass Supporting Functions
 //------------------------------------------------------------------------------
+/**
+ * @brief Sets up logging instrumentation to enable tracking execution inline.
+ *
+ * This function injects a basicblock at the top of the main function to enable
+ * logging function and basicblock behaviors of the code during execution.
+ *
+ * @param M The LLVM module required for context and generating code for targets
+ * being instrumented.
+ *
+ * @return Whether or not the instrumentation succeeded.
+ *
+ * @details
+ * TODO Write detailed example of what happens here
+ * This function sets up logging by initializing a small file logger and setting
+ * the log level. This is setup at the top of main in a block named "setupBlock"
+ * that branches directly to the original setup block.
+ * 
+ * @usage
+ * if (!logSetup(M))
+ *      // Throw
+ */
 bool FuncLog::logSetup(Module &M) {
     auto &CTX = M.getContext();
 
@@ -121,14 +187,9 @@ bool FuncLog::logSetup(Module &M) {
     FunctionCallee loggerSetLevel = logger::loggerSetLevel(M);
     FunctionCallee loggerInitFileLogger = logger::loggerInitFileLogger(M);
     
-    // TODO Required for adding PID
-    // Need to add function callee for this function
-    //FunctionCallee sNPrintF = stdio::snprintf(M);
-
     // Define Types to use
     Type* Int32Ty = Type::getInt32Ty(CTX);
     Type* Int8Ty  = Type::getInt8Ty(CTX);
-    //Type* ptrTy = Type::getPtrTy(CTX);
 
     // 
     // Fetch first entry block
@@ -226,13 +287,25 @@ bool FuncLog::logSetup(Module &M) {
     return true;
 }
 
-/******************************************************************************
- * Usage:
- *  void updateTerminators(BasicBlock*, BasicBlock*)
- *****************************************************************************/
+/**
+ * @brief Logs all function entry events.
+ *
+ * This function injects a logging instruction at the start of the first
+ * basicblock of a function to register its entry.
+ *
+ * @param F The function being instrumented
+ *
+ * @return void
+ *
+ * @details
+ * TODO Write detailed example of what happens here
+ * 
+ * @usage
+ * logFuncEntry(F);
+ */
 void logFuncEntry(Function &F) {
     std::string funcName = F.getName().str();
-    std::string logMsg = "Function Entered: " + funcName;
+    std::string logMsg = FuncLog::fEntry + funcName;
     
     Module* M = F.getParent();
     FunctionCallee loggerLog = logger::loggerLog(*M);
@@ -267,15 +340,29 @@ void logFuncEntry(Function &F) {
     return;
 }
 
+/**
+ * @brief Logs returns from functions.
+ *
+ * This function injects a logging instruction at each return instruction
+ * within a function.
+ *
+ * @param F The function being instrumented
+ *
+ * @return void
+ *
+ * @details
+ * TODO Write detailed example of what happens here
+ * 
+ * @usage
+ * logFuncRet(F);
+ */
 void logFuncRet(Function &F) {
     std::string funcName = F.getName().str();
    
     Module* M = F.getParent();
     FunctionCallee loggerLog = logger::loggerLog(*M);
 
-    // Check terminator instructions of each BasicBlock for:
-    // - if they are a return inst
-    // - an exit call inst
+    // Check for return instructions (exit & abort are in calls)
     IRBuilder bldr(F.getContext());
     for (auto &BB : F) {
         std::string logMsg;
@@ -285,8 +372,7 @@ void logFuncRet(Function &F) {
             continue;
         }
 
-        logMsg = "Function Return: " + funcName;
-        // TODO Should we check for no-returns?
+        logMsg = FuncLog::fRet + funcName;
 
         // If the logMessage has been populated, insert.
         if (!logMsg.empty()) {
@@ -298,6 +384,22 @@ void logFuncRet(Function &F) {
     return;
 }
 
+/**
+ * @brief Logs function calls within a function.
+ *
+ * This function injects a logging instruction at each call instruction
+ * within a function.
+ *
+ * @param F The function being instrumented
+ *
+ * @return void
+ *
+ * @details
+ * TODO Write detailed example of what happens here
+ * 
+ * @usage
+ * logFuncCall(F);
+ */
 void logFuncCall(Function &F) {
     Module *M = F.getParent();
     FunctionCallee loggerLog = logger::loggerLog(*M);
@@ -307,24 +409,27 @@ void logFuncCall(Function &F) {
 
     IRBuilder bldr(F.getContext());
     for (auto &BB : F) {
+        // Dodge setupLogger BB
         if (BB.getName().str() == "setupLogger")
             continue;
+
+        // Check each instruction for calls
         for (auto &I : BB) {
 
             // Examine Function Calls
             if (auto *CI = dyn_cast<CallInst>(&I)) {
-                // Handle Indirect Calls
                 std::string cFName = get_func_name(CI).str();
 
                 if (is_exit_call(CI))
-                    logMsg = "Program Exit: " + funcName;
+                    logMsg = FuncLog::programExit + funcName;
                 else if (is_abort_call(CI))
-                    logMsg = "Program Abort: " + funcName;
+                    logMsg = FuncLog::programAbort + funcName;
                 else
-                    logMsg = "Function Call: " + cFName;
+                    logMsg = FuncLog::fCall + cFName;
 
-                // Do NOT forget the escape character %
+                // Handle indirect calls
                 if (cFName == "Indirect Call")
+                    // Do NOT forget the escape character %
                     logMsg += " to -> %" + get_value_name(CI->getCalledOperand());
 
                 // Generate log instruction
@@ -333,11 +438,12 @@ void logFuncCall(Function &F) {
                 bldr.CreateCall(loggerLog, {bldr.getInt32(LogLevel_INFO), logFileName, bldr.getInt32(0), funcCall}, "");
             }
 
-            // Tracking on function calls and stores and assignments is weird.
+            // Log function assignments by checking to see if stored vals are
+            // functions
             else if (auto *CI = dyn_cast<StoreInst>(&I)) {
                 Value *storedValue = CI->getValueOperand();
                 if (Function *func = dyn_cast<Function>(storedValue)) {
-                    logMsg = "Function Assignment: " + func->getName().str();
+                    logMsg = FuncLog::fAssign + func->getName().str();
 
                     bldr.SetInsertPoint(&I);
                     Constant *funcAssign = bldr.CreateGlobalStringPtr(logMsg, "FuncAssign", 0, F.getParent());
@@ -350,6 +456,96 @@ void logFuncCall(Function &F) {
     return;
 }
 
+/**
+ * @brief Logs basicblock entries within a function.
+ *
+ * This function injects a logging instruction at the top of each basicblock
+ * within a function.
+ *
+ * @param F The function being instrumented
+ *
+ * @return void
+ *
+ * @details
+ * TODO Write detailed example of what happens here
+ * 
+ * @usage
+ * logBBEntry(F);
+ */
+void logBBEntry(Function &F) {
+    Module *M = F.getParent();
+    FunctionCallee loggerLog = logger::loggerLog(*M);
+
+    std::string funcName = F.getName().str();
+    std::string logMsg;
+
+    uint32_t bbNum = 0;
+    IRBuilder bldr(F.getContext());
+    for (auto &BB : F) {
+        // Dodge setup logger
+        std::string bbName = BB.getName().str();
+        if (bbName == "setupLogger")
+            continue;
+
+        // Handle Empty BasicBlock Names
+        if (!BB.hasName()) {
+            // Generate BBName
+            std::ostringstream oss;
+            oss << funcName << "-" << std::setfill('0') << std::setw(2) << bbNum;
+            bbName = oss.str();
+
+            // Set BBName to BasicBlock
+            BB.setName(bbName);
+        }
+
+        // Generate log message
+        logMsg = FuncLog::bEntry + bbName;
+
+#if DEBUG
+        errs() << "\tTMP Name: " << BB.getName() << "\n";
+        errs() << "\tIn BBName: " << bbName << "\n";
+        errs() << "\tpre-mod\n";
+        dumpBB(&BB);
+#endif
+
+        // Set insert point at top of the BB
+        IRBuilder bldr(&BB);
+
+        //  Get top instruction of BB
+        Instruction* firstI = BB.getFirstNonPHI();
+        bldr.SetInsertPoint(firstI);
+        
+        // Insert Entry Logging Instruction
+        Constant* bbEntry = bldr.CreateGlobalStringPtr(logMsg, "BBEntry", 0, F.getParent());
+        bldr.CreateCall(loggerLog, {bldr.getInt32(LogLevel_INFO), logFileName, bldr.getInt32(0), bbEntry}, "");
+
+        // Increment BB Counter
+        ++bbNum;
+#if DEBUG
+        errs() << "\tpost-mod\n";
+        dumpBB(&BB);
+#endif
+    }
+}
+
+/**
+ * @brief Instruments all functions with this passes analysis.
+ *
+ * This function instruments all functions and basicblocks in the codebase
+ * being instrumented.
+ *
+ * @param M The LLVM Module providing functions and context for the code being
+ * instrumented
+ *
+ * @return Whether or not instrumentation succeeded.
+ *
+ * @details
+ * TODO Write detailed example of what happens here
+ * 
+ * @usage
+ * if (!instrumentAllFuncs(M))
+ *      // Throw
+ */
 bool instrumentAllFuncs(Module &M) {
     // Loop through functions
     for (auto &F : M) {
@@ -358,6 +554,7 @@ bool instrumentAllFuncs(Module &M) {
             continue;
     
         logFuncCall(F);
+        logBBEntry(F);
         logFuncEntry(F);
         logFuncRet(F);
     }
@@ -375,7 +572,7 @@ PreservedAnalyses FuncLog::run(Module &M, ModuleAnalysisManager &) {
 // TODO Can likely be faster if I just do everything in one loop.
 bool FuncLog::runOnModule(Module &M) {
     // TODO This whole thing can probably be taken out
-    // Copy existing basic blocks
+    // Copy existbeingasic blocks
     for (auto &F : M) {
         // Populate the vector with the function's current basic blocks
         for (auto &BB : F) {
@@ -383,6 +580,7 @@ bool FuncLog::runOnModule(Module &M) {
         }
     }
 
+    // TODO Check to see if logSetup needs to be run or not
     if (!logSetup(M)) {
         errs() << "Failed to set up logging library instrumentation\n";
         exit(1);
