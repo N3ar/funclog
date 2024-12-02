@@ -18,10 +18,13 @@
 #define LOGFILE_NAME "funclogfile"
 
 struct FuncLog : public llvm::PassInfoMixin<FuncLog> {
-    std::string funcEntry  = "Entering Function: %s";
-    std::string funcExit   = "Exiting Function: %s";
-    std::string funcCall   = "Calling Function: %s";
-    std::string funcAssign = "Assigning Function: %s";
+    static const std::string fEntry; 
+    static const std::string fRet;
+    static const std::string programExit;
+    static const std::string programAbort;
+    static const std::string fCall;
+    static const std::string fAssign;
+    static const std::string bEntry;
 
     llvm::PreservedAnalyses run(llvm::Module &, llvm::ModuleAnalysisManager &);
     bool runOnModule(llvm::Module &);
@@ -30,5 +33,14 @@ struct FuncLog : public llvm::PassInfoMixin<FuncLog> {
     static bool isRequired() { return true; }
     std::map<llvm::Function*, std::vector<llvm::BasicBlock*>> originalBlocks;
 };
+
+const std::string FuncLog::fEntry       = "Func Entered: ";
+const std::string FuncLog::fRet         = "Func Return: ";
+const std::string FuncLog::programExit  = "Program Exit: ";
+const std::string FuncLog::programAbort = "Program Abort: ";
+const std::string FuncLog::fCall        = "Func Call: ";
+const std::string FuncLog::fAssign      = "Func Assignment: ";
+const std::string FuncLog::bEntry       = "BasicBlock Entry: ";
+
 
 #endif // FUNCLOG_H_

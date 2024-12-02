@@ -39,5 +39,12 @@ int main() {
     operation = add;
     printf("Add: %d\n", operation(3, 4));
 
+    // Spam basicblocks to test basicblock logging
+    for (int i = 0; i < 2; i = add(i, 1)) {
+        if (i)
+            add(x, x);
+        sub (x, y);
+    }
+
     return 0;
 }

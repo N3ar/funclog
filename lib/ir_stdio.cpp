@@ -1,3 +1,9 @@
+/*********************************************************************
+ * @file  ir_stdio.cpp
+ * 
+ * @brief Implementations of FunctionCallees supporting stdio funcs
+ * used in the analysis passes.
+ *********************************************************************/
 #include "ir_stdio.h"
 
 #include "llvm/Passes/PassPlugin.h"
@@ -6,8 +12,22 @@
 using namespace llvm;
 using namespace funclog;
 
-// TODO Look at the call functions and make better
-
+/**
+ * @brief Generates a FunctionCallee to inject printf into a target
+ *
+ * This function defines the function allowing the pass to inject calls to
+ * printf whether or not stdio.h is included and linked.
+ *
+ * @param M The LLVM Module whose context we are defining the function within
+ *
+ * @return FunctionCallee for a function interface injected into the module
+ *
+ * @details
+ * TODO Write detailed example of what happens here
+ * 
+ * @usage
+ * FunctionCallee pf = printf(M);
+ */
 FunctionCallee ir_stdio::printf(Module &M) {
     auto &CTX = M.getContext();
     PointerType* aTy = PointerType::getUnqual(Type::getInt8Ty(CTX));
@@ -18,10 +38,22 @@ FunctionCallee ir_stdio::printf(Module &M) {
     return M.getOrInsertFunction("printf", fTy);
 }
 
-#if 0
-snprintf(str, size, const char *format, ...);
-int j = snprintf(buffer, 6, "%s\n", s);
-#endif
+/**
+ * @brief Generates a FunctionCallee to inject snprintf into a target
+ *
+ * This function defines the function allowing the pass to inject calls to
+ * snprintf whether or not stdio.h is included and linked.
+ *
+ * @param M The LLVM Module whose context we are defining the function within
+ *
+ * @return FunctionCallee for a function interface injected into the module
+ *
+ * @details
+ * TODO Write detailed example of what happens here
+ * 
+ * @usage
+ * FunctionCallee snpf = snprintf(M);
+ */
 FunctionCallee ir_stdio::snprintf(Module &M) {
     auto &CTX = M.getContext();
 
@@ -32,6 +64,6 @@ FunctionCallee ir_stdio::snprintf(Module &M) {
     args.push_back(PointerType::getUnqual(Type::getInt8Ty(CTX)));
 
     FunctionType* fTy = FunctionType::get(retTy, args, true);
-    return M.getOrInsertFunction("snprintf", fTy);
 
+    return M.getOrInsertFunction("snprintf", fTy);
 }
