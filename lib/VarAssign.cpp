@@ -35,8 +35,11 @@
 #include <iostream>
 */
 
+// TODO Get rid of the funclog namespace. Currently the ir_<name>.h files are 
+// currently there. Instead put them in some outer namespace
 using namespace llvm;
-using namespace varassign;
+using namespace funclog;
+//using namespace varassign;
 
 #define DEBUG 0
 
@@ -140,7 +143,7 @@ bool VarAssign::logSetup(Module &M) {
     BasicBlock* originalBB = &entryFunc->getEntryBlock();
     
     // Check to see if setupLogger BB exists
-    if (originalBB->getName().str()) {
+    if (originalBB->getName().str().empty()) {
         // Populate LogFileName from existing globals
         logFileName = M.getGlobalVariable("logFileName");
 
@@ -230,9 +233,12 @@ bool VarAssign::logSetup(Module &M) {
     return true;
 }
 
+#if 0
             // Examine Function Calls
             if (auto *CI = dyn_cast<CallInst>(&I)) {
                 std::string cFName = get_func_name(CI).str();
+
+                    logMsg += " to -> %" + get_value_name(CI->getCalledOperand());
 
             // Log function assignments by checking to see if stored vals are
             // functions
@@ -246,6 +252,7 @@ bool VarAssign::logSetup(Module &M) {
                     bldr.CreateCall(loggerLog, {bldr.getInt32(LogLevel_INFO), logFileName, bldr.getInt32(0), funcAssign}, "");
                 }
             }
+#endif
 
 /**
  * @brief Insert logging instrumentation above found load instruction
@@ -264,12 +271,21 @@ bool VarAssign::logSetup(Module &M) {
  *      logLoad(I);
  */
 void logLoad(Instruction* I) {
-    std::string logMsg = VarAssign::loadInst;
+    std::string logMsg = VarAssign::loadI;
 
     // Get instruction information
     Type* loadIType = I->getType();
-    StringRef loadIDest = I->getName();
-    StringRef loadISrcAddr = I->getPointerOperand()->getName();
+    std::string loadIDest = get_value_name(I);
+    std::string loadISrcAddr = get_value_name(
+        dyn_cast<LoadInst>(I)->getPointerOperand());
+
+    // convert type info to stream then to string
+    std::string typeStr;
+    raw_string_ostream rso(typeStr);
+    loadIType->print(rso);
+    rso.flush();
+
+    logMsg += loadIDest + " with " + typeStr + " in " + loadISrcAddr;
 
     // Setup logging instruction
     Module* M = I->getModule();
@@ -277,12 +293,11 @@ void logLoad(Instruction* I) {
 
     // Set insertion point above target instruction
     IRBuilder bldr(I->getContext());
-    bldr.SetInsertPoint(firstI);
+    bldr.SetInsertPoint(I);
         
     // Insert LoadInst Logging Instruction
     Constant* loadI = bldr.CreateGlobalStringPtr(logMsg, "loadI", 0, M);
     bldr.CreateCall(loggerLog, {bldr.getInt32(LogLevel_INFO), logFileName, bldr.getInt32(0), loadI}, "");
-
 
     return;
 }
@@ -304,7 +319,36 @@ void logLoad(Instruction* I) {
  *      logStore(I);
  */
 void logStore(Instruction* I) {
-    std::string logMsg = VarAssign::storeInst;
+    std::string logMsg = VarAssign::storeI;
+
+    // Get instruction information
+    // TODO Solve variant Store Instructions
+    Type* storeIValType = dyn_cast<StoreInst>(I)->getValueOperand()->getType();
+    std::string storeIVal = get_value_name(
+            dyn_cast<StoreInst>(I)->getValueOperand());
+    std::string storeIDestAddr = get_value_name(
+            dyn_cast<StoreInst>(I)->getPointerOperand());
+
+    // convert type info to stream then to string
+    std::string typeStr;
+    raw_string_ostream rso(typeStr);
+    storeIValType->print(rso);
+    rso.flush();
+
+    logMsg += storeIVal + " with " + typeStr + " in %" + storeIDestAddr;
+
+    // Setup logging instruction
+    Module* M = I->getModule();
+    FunctionCallee loggerLog = logger::loggerLog(*M);
+
+    // Set insertion point above target instruction
+    IRBuilder bldr(I->getContext());
+    bldr.SetInsertPoint(I);
+        
+    // Insert LoadInst Logging Instruction
+    Constant* storeI = bldr.CreateGlobalStringPtr(logMsg, "storeI", 0, M);
+    bldr.CreateCall(loggerLog, {bldr.getInt32(LogLevel_INFO), logFileName, bldr.getInt32(0), storeI}, "");
+
     return;
 }
 
