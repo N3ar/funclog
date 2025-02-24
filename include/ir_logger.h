@@ -3,6 +3,12 @@
 
 #include "llvm/Transforms/Utils/BuildLibCalls.h"
 
+/**
+ * @file ir_logger.h
+ * @brief Provides FunctionCallee(s) for the c-logger library used to emit
+ * logging from injected targets.
+ */
+
 namespace funclog {
     namespace logger {
         llvm::FunctionCallee loggerInitFileLogger(llvm::Module &);
