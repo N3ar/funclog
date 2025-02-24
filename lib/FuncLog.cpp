@@ -1,19 +1,19 @@
-// File
-//  FuncLog.cpp
-//
-// DESCRIPTION:
-//  Generates Function Logging instrumentation in LLVM IR for insertion into
-//  source code.
-//
-//  Visits each function and instruments function entry, exit, and call.
-//  Calling instrumentation includes function pointers and assignment.
-//  Visits all the BasicBlocks per Func Per Module & adds the above generated
-//  instrumentation to the BasicBlocks
-//
-// USAGE:
-//      opt -load-pass-plugin=libGneiss.so -passes="gneiss"
-//          <input_llvm_bc> -o <updated_llvm_bc>
-//
+/**
+ * @file FuncLog.cpp
+ * 
+ *  Generates Function Logging instrumentation in LLVM IR for insertion into
+ *  source code.
+ *  
+ *  Visits each function and instruments function entry, exit, and call.
+ *  Calling instrumentation includes function pointers and assignment.
+ *  Visits all the BasicBlocks per Func Per Module & adds the above generated
+ *  instrumentation to the BasicBlocks.
+ *
+ *  @usage 
+ *    opt -load-pass-plugin=libGneiss.so -passes="gneiss"
+ *    <input_llvm_bc> -o <updated_llvm_bc>
+ */
+
 // NOTES:
 //  Currently I have logBBEntry as a funciton outside of the function that
 //  traverses all basicblocks. This means that I am running the same loop again
@@ -46,7 +46,7 @@ using namespace funclog;
 #define DEBUG 0
 
 GlobalVariable* logFileName;
-GlobalVariable* line;                 // TODO Always zero; preproc constraint
+GlobalVariable* line;                 // Always zero; preproc constraint
 
 //------------------------------------------------------------------------------
 // Some of Jay's LLVM support functions
@@ -60,8 +60,6 @@ GlobalVariable* line;                 // TODO Always zero; preproc constraint
  *
  * @param BB The basicblock being printed.
  * 
- * @example FuncLog.cpp
- *
  * @usage
  * dumpBB(someBB); // someBB must be a BasicBlock*
  */
@@ -101,6 +99,21 @@ StringRef get_func_name(CallInst* call) {
         return StringRef("Indirect Call");
 }
 
+/**
+ * @brief Gets the name of a value.
+ *
+ * This function gets the name of a value.
+ *
+ * @param val The Value to fetch the name for.
+ *
+ * @return The name of the function as a StringRef
+ *
+ * @details
+ * The name of the function is usually a string.
+ * 
+ * @usage
+ * std::string str = get_value_name(val);
+ */
 std::string get_value_name(Value* val) {
     if (val->hasName())
         return val->getName().str();
@@ -112,6 +125,18 @@ std::string get_value_name(Value* val) {
     return rso.str();
 }
 
+/**
+ * @brief Returns if the instruction is an exit call or not.
+ *
+ * This function returns whether or not the instruction is an exit call
+ *
+ * @param call The instruction in question.
+ *
+ * @return Bool as to whether or not the instruciton is an exit call.`
+ * 
+ * @usage
+ * if (is_exit_call(insn)) { ... }
+ */
 bool is_exit_call(Instruction* call) {
     // Ensure instruction is a call instruction.
     if (!isa<CallInst>(call))
@@ -123,6 +148,18 @@ bool is_exit_call(Instruction* call) {
     return funcName.equals(tgtFunc);
 }
 
+/**
+ * @brief Returns if the instruction is an abort call or not.
+ *
+ * This function returns whether or not the instruction is an abort
+ *
+ * @param call The instruction in question.
+ *
+ * @return Bool as to whether or not the instruciton is an abort call.`
+ * 
+ * @usage
+ * if (is_abort_call(insn)) { ... }
+ */
 bool is_abort_call(Instruction* call) {
     // Ensure instruction is a call instruction.
     if (!isa<CallInst>(call))
@@ -135,17 +172,21 @@ bool is_abort_call(Instruction* call) {
 }
 
 
-bool is_main_ret(Instruction* i) {
-    std::string tgtName = "main";
-    Function* f = i->getFunction();
-    return (!f->getName().compare(tgtName) && isa<ReturnInst>(i));
-}
-
+/**
+ * @brief Returns a new GlobalVariable for use in the pass that can be linked
+ * to externally.
+ *
+ * @param M Module address
+ * @param Ty Type to be used to greate the globalVariable
+ * @param c Constant string to name the GlobalInt
+ *
+ * @return GlobalVariable of type Ty named c
+ * 
+ * @usage
+ * GlobalVariable* varName = createGlobalInt(Module, Type, "varNameString");
+ * 
+ */
 GlobalVariable* createGlobalInt(Module &M, Type* Ty, const char *c) {
-    /*
-     * Usage:
-     *  GlobalVariable* varName = createGlobalInt(Module, Type, "varNameString");
-     */
     return new GlobalVariable(M,
             Ty,
             false,
@@ -168,8 +209,6 @@ GlobalVariable* createGlobalInt(Module &M, Type* Ty, const char *c) {
  *
  * @return Whether or not the instrumentation succeeded.
  *
- * @details
- * TODO Write detailed example of what happens here
  * This function sets up logging by initializing a small file logger and setting
  * the log level. This is setup at the top of main in a block named "setupBlock"
  * that branches directly to the original setup block.
@@ -297,9 +336,6 @@ bool FuncLog::logSetup(Module &M) {
  *
  * @return void
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * logFuncEntry(F);
  */
@@ -350,9 +386,6 @@ void logFuncEntry(Function &F) {
  *
  * @return void
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * logFuncRet(F);
  */
@@ -394,9 +427,6 @@ void logFuncRet(Function &F) {
  *
  * @return void
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * logFuncCall(F);
  */
@@ -466,9 +496,6 @@ void logFuncCall(Function &F) {
  *
  * @return void
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * logBBEntry(F);
  */
@@ -538,9 +565,6 @@ void logBBEntry(Function &F) {
  * instrumented
  *
  * @return Whether or not instrumentation succeeded.
- *
- * @details
- * TODO Write detailed example of what happens here
  * 
  * @usage
  * if (!instrumentAllFuncs(M))

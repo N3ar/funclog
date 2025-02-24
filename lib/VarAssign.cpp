@@ -1,23 +1,22 @@
-// File
-//  VarAssign.cpp
-//
-// DESCRIPTION:
-//  Generates Variable Assignment Logging instrumentation in LLVM IR for
-//  insertion into source code at compile time.
-//
-//  Traverses each instruction and logs loads and stores.
-//  Visits all Instructions in each BasicBlock per Func Per Module & adds the
-//  above generated instrumentation to the BasicBlocks following assignments
-//
-// USAGE:
-//      opt -load-pass-plugin=libVarAssign.so -passes="varassign"
-//          <input_llvm_bc> -o <updated_llvm_bc>
-//
-// NOTES:
-// 
-// TODO
-//  - Switch to header defined log strings
-//=============================================================================
+/**
+ * @file VarAssign.cpp
+ *
+ * NOTE The author doesn't recommend that you use this pass. In it's current
+ * state there are many missing assignments. Not only are there missing
+ * assignments, but the instrumentation is incredibly heavy. The author 
+ * suggests that one uses funclog and manually traces values of interest.
+ *
+ * Generates Variable Assignment Logging instrumentation in LLVM IR for 
+ * insertion into source code at compile time.
+ *
+ * Traverses each instruction and logs loads and stores.
+ * Visits all instructions in each BasicBlock per Func Per Module & adds the
+ * above generated instrumentaiton to the BasicBlocks following assignments
+ *
+ * @usage
+ *      opt -load-pass-plugin=labVarAssign.so -passes="varassign"
+ *          <input_llvm_bc> -o <updated_llvm_bc>
+ */
 #include "VarAssign.h"
 #include "ir_stdio.h"
 #include "ir_logger.h"
@@ -44,7 +43,7 @@ using namespace funclog;
 #define DEBUG 0
 
 GlobalVariable* logFileName;
-GlobalVariable* line;                 // TODO Always zero; preproc constraint
+GlobalVariable* line;                 // Always zero; preproc constraint
 
 //------------------------------------------------------------------------------
 // Some of Jay's LLVM support functions
@@ -71,6 +70,21 @@ void dumpBB(BasicBlock* BB) {
 }
 #endif
 
+/**
+ * @brief Gets the name of a value.
+ *
+ * This function gets the name of a value.
+ *
+ * @param val The Value to fetch the name for.
+ *
+ * @return The name of the function as a StringRef
+ *
+ * @details
+ * The name of the function is usually a string.
+ * 
+ * @usage
+ * std::string str = get_value_name(val);
+ */
 std::string get_value_name(Value* val) {
     if (val->hasName())
         return val->getName().str();
@@ -82,6 +96,20 @@ std::string get_value_name(Value* val) {
     return rso.str();
 }
 
+/**
+ * @brief Returns a new GlobalVariable for use in the pass that can be linked
+ * to externally.
+ *
+ * @param M Module address
+ * @param Ty Type to be used to greate the globalVariable
+ * @param c Constant string to name the GlobalInt
+ *
+ * @return GlobalVariable of type Ty named c
+ * 
+ * @usage
+ * GlobalVariable* varName = createGlobalInt(Module, Type, "varNameString");
+ * 
+ */
 GlobalVariable* createGlobalInt(Module &M, Type* Ty, const char *c) {
     /*
      * Usage:
@@ -110,12 +138,6 @@ GlobalVariable* createGlobalInt(Module &M, Type* Ty, const char *c) {
  *
  * @return Whether or not the instrumentation succeeded.
  *
- * @details
- * TODO Write detailed example of what happens here
- * This function sets up logging by initializing a small file logger and setting
- * the log level. This is setup at the top of main in a block named "setupBlock"
- * that branches directly to the original setup block.
- * 
  * @usage
  * if (!logSetup(M))
  *      // Throw
@@ -233,27 +255,6 @@ bool VarAssign::logSetup(Module &M) {
     return true;
 }
 
-#if 0
-            // Examine Function Calls
-            if (auto *CI = dyn_cast<CallInst>(&I)) {
-                std::string cFName = get_func_name(CI).str();
-
-                    logMsg += " to -> %" + get_value_name(CI->getCalledOperand());
-
-            // Log function assignments by checking to see if stored vals are
-            // functions
-            else if (auto *CI = dyn_cast<StoreInst>(&I)) {
-                Value *storedValue = CI->getValueOperand();
-                if (Function *func = dyn_cast<Function>(storedValue)) {
-                    logMsg = FuncLog::fAssign + func->getName().str();
-
-                    bldr.SetInsertPoint(&I);
-                    Constant *funcAssign = bldr.CreateGlobalStringPtr(logMsg, "FuncAssign", 0, F.getParent());
-                    bldr.CreateCall(loggerLog, {bldr.getInt32(LogLevel_INFO), logFileName, bldr.getInt32(0), funcAssign}, "");
-                }
-            }
-#endif
-
 /**
  * @brief Insert logging instrumentation above found load instruction
  *
@@ -263,8 +264,6 @@ bool VarAssign::logSetup(Module &M) {
  * @param I The LLVM-IR Instruction that will be logged as a load instruction
  *
  * @return Void
- *
- * @details TODO
  *
  * @usage
  * if (isa<LoadInst>(Instruction* I)
@@ -311,8 +310,6 @@ void logLoad(Instruction* I) {
  * @param I The LLVM-IR Instruction that will be logged as a store instruction
  *
  * @return Void
- *
- * @details TODO
  *
  * @usage
  * if (isa<StoreInst>(Instruction* I)
@@ -364,9 +361,6 @@ void logStore(Instruction* I) {
  *
  * @return Whether or not instrumentation succeeded.
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * if (!instrumentAllAssignments(M))
  *      // Throw
