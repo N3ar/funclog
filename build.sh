@@ -11,10 +11,10 @@ function do_exit {
     exit $1
 }
 
+# Make build directory if needed
 if [ ! -d "${BUILD}" ]; then
     mkdir ${BUILD}
 fi
-
 pushd ${BUILD}
 
 # Clean Build Dir
@@ -23,6 +23,7 @@ if [ "$1" == "-c" ] ; then
     rm -rf *
 fi
 
+# Run CMAKE
 cmake ..
 RET=$?
 if [ ${RET} -ne 0 ] ; then
@@ -31,6 +32,7 @@ if [ ${RET} -ne 0 ] ; then
 fi
 echo "[+] COMMAND: 'cmake ..' succeeded"
 
+# Perform build with CMAKE
 cmake --build .
 RET=$?
 if [ ${RET} -ne 0 ] ; then
@@ -39,9 +41,11 @@ if [ ${RET} -ne 0 ] ; then
 fi
 echo "[+] COMMAND: 'cmake --build .' succeeded"
 
+# Install the Shared Object
 if [ "$1" == "-i" ]; then
     echo "[*] Installing in ${INSTALL}"
     cp ${BUILD}/lib/libFuncLog.so ${INSTALL}/libFuncLog.so
 fi
 
+# Exit success
 do_exit 0
