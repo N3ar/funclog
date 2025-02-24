@@ -19,9 +19,6 @@ using namespace funclog;
  *
  * @return FunctionCallee for a function interface injected into the module
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * FunctionCallee lIFL = loggerInitFileLogger(M);
  */
@@ -51,9 +48,6 @@ FunctionCallee logger::loggerInitFileLogger(Module &M) {
  *
  * @return FunctionCallee for a function interface injected into the module
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * FunctionCallee lSL = loggerSetLevel(M);
  */
@@ -80,9 +74,6 @@ FunctionCallee logger::loggerSetLevel(Module &M) {
  *
  * @return FunctionCallee for a function interface injected into the module
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * FunctionCallee lL = loggerLog(M);
  */

@@ -70,6 +70,13 @@ target_include_directories(FuncLog PUBLIC
     )
 target_link_libraries(FuncLog PUBLIC ${EXTRA_LIBS})
 
+add_library(VarAssign SHARED VarAssign.cpp)
+target_include_directories(VarAssign PUBLIC
+    "${PROJECT_BINARY_DIR}"
+    ${EXTRA_INCLUDES}
+    )
+target_link_libraries(VarAssign PUBLIC ${EXTRA_LIBS})
+
 # Allow undefined symbols in shared objects on Darwin
 #target_link_libraries(Gneiss 
 #    "$<$<PLATFORM_ID:Darwin>:-undefined dynamic_lookup>")

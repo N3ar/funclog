@@ -22,9 +22,6 @@ using namespace funclog;
  *
  * @return FunctionCallee for a function interface injected into the module
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * FunctionCallee pf = printf(M);
  */
@@ -48,9 +45,6 @@ FunctionCallee ir_stdio::printf(Module &M) {
  *
  * @return FunctionCallee for a function interface injected into the module
  *
- * @details
- * TODO Write detailed example of what happens here
- * 
  * @usage
  * FunctionCallee snpf = snprintf(M);
  */

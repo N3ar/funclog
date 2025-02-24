@@ -94,6 +94,15 @@ clang -llogger instrumented-hello.ll -o hello -v
 ./hello
 ```
 
+There is a second pass included that roughly tracks variable assignment. The processes is the same as the above but with the following change:
+```sh
+# Run opt pass on hello.ll emited from the above to instrument
+# built without -i
+opt -load-pass-plugin="${APP_HOME}/build/lib/libVarAssign.so" -passes="varassign" -S hello.ll -o instrumented-hello.ll
+# built with -i
+opt -load-pass-plugin=libVarAssign.so -passes="varassign" -S hello.ll -o instrumented-hello.ll
+```
+
 ## TODO
 - Indirect Call Enrichment
 - Function Argument Enrichment
